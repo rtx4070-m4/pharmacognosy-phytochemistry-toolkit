@@ -1,0 +1,289 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharmacognosy & Phytochemistry Toolkit</title>
+
+<style>
+body{
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+background:#f5f7fb;
+margin:0;
+padding:20px;
+display:flex;
+justify-content:center;
+}
+.container{
+max-width:800px;
+width:100%;
+background:white;
+padding:30px;
+border-radius:12px;
+box-shadow:0 10px 30px rgba(0,0,0,0.1);
+}
+h1{
+margin-top:0;
+font-size:26px;
+}
+.subtitle{
+color:#555;
+margin-bottom:25px;
+}
+select,input,button{
+width:100%;
+padding:10px;
+margin-top:6px;
+margin-bottom:16px;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:15px;
+}
+button{
+background:#2c7be5;
+color:white;
+border:none;
+cursor:pointer;
+font-weight:600;
+}
+button:hover{
+background:#1a68d1;
+}
+.result{
+background:#f1f6ff;
+padding:16px;
+border-radius:8px;
+margin-top:20px;
+font-weight:500;
+}
+.error{
+color:red;
+font-weight:500;
+}
+label{
+font-weight:600;
+}
+@media(max-width:600px){
+.container{
+padding:20px;
+}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h1>Pharmacognosy & Phytochemistry Toolkit</h1>
+<div class="subtitle">Calculators for Herbal Drug Standardization & Evaluation</div>
+
+<label>Select Calculator</label>
+<select id="calculatorSelect"></select>
+
+<div id="inputArea"></div>
+
+<button onclick="calculate()">Calculate</button>
+
+<div id="result" class="result"></div>
+</div>
+
+<script>
+
+const calculators = {
+
+extract_yield:{
+name:"Extract Yield",
+inputs:[
+{id:"extract",label:"Weight of dried extract (g)"},
+{id:"plant",label:"Weight of starting plant material (g)"}
+],
+calc:(v)=>{
+let yieldPercent=(v.extract/v.plant)*100;
+return `Extract Yield: ${yieldPercent.toFixed(2)} % (w/w)
+<br><br>Typical plant extracts range from 5–25% depending on solvent and plant species.`;
+}
+},
+
+moisture:{
+name:"Moisture Content",
+inputs:[
+{id:"initial",label:"Initial weight of sample (g)"},
+{id:"dry",label:"Weight after drying (g)"}
+],
+calc:(v)=>{
+let moisture=((v.initial-v.dry)/v.initial)*100;
+let warning= moisture>10 ? "<br><b>Warning:</b> Moisture above 10% indicates possible poor storage." : "";
+return `Moisture Content: ${moisture.toFixed(2)} % ${warning}`;
+}
+},
+
+total_ash:{
+name:"Total Ash",
+inputs:[
+{id:"crucible",label:"Weight of crucible (g)"},
+{id:"sample",label:"Weight of crucible + sample (g)"},
+{id:"ash",label:"Weight of crucible + ash (g)"}
+],
+calc:(v)=>{
+let ashWeight=v.ash-v.crucible;
+let sampleWeight=v.sample-v.crucible;
+let totalAsh=(ashWeight/sampleWeight)*100;
+return `Total Ash Value: ${totalAsh.toFixed(2)} % (w/w)
+<br><br>Total ash indicates total mineral content and inorganic contamination.`;
+}
+},
+
+acid_ash:{
+name:"Acid-Insoluble Ash",
+inputs:[
+{id:"residue",label:"Weight of residue after acid treatment (g)"},
+{id:"sampleWeight",label:"Original sample weight used for ash (g)"}
+],
+calc:(v)=>{
+let acidAsh=(v.residue/v.sampleWeight)*100;
+return `Acid-Insoluble Ash: ${acidAsh.toFixed(2)} %
+<br><br>This reflects siliceous contamination such as sand and soil.`;
+}
+},
+
+alcohol_extractive:{
+name:"Alcohol-Soluble Extractive",
+inputs:[
+{id:"residue",label:"Weight of extract residue (g)"},
+{id:"plant",label:"Weight of plant material (g)"},
+{id:"solvent",label:"Solvent concentration (optional)",type:"text"}
+],
+calc:(v)=>{
+let value=(v.residue/v.plant)*100;
+return `Alcohol-Soluble Extractive Value: ${value.toFixed(2)} %
+<br>Solvent: ${v.solvent||"Not specified"}`;
+}
+},
+
+water_extractive:{
+name:"Water-Soluble Extractive",
+inputs:[
+{id:"residue",label:"Weight of extract residue (g)"},
+{id:"plant",label:"Weight of plant material (g)"}
+],
+calc:(v)=>{
+let value=(v.residue/v.plant)*100;
+return `Water-Soluble Extractive Value: ${value.toFixed(2)} %`;
+}
+},
+
+swelling:{
+name:"Swelling Index",
+inputs:[
+{id:"volume",label:"Volume of swollen material (mL)"},
+{id:"weight",label:"Weight of dry sample (g)"}
+],
+calc:(v)=>{
+let index=v.volume/v.weight;
+return `Swelling Index: ${index.toFixed(2)} mL/g
+<br><br>Psyllium/Ispaghula typically show swelling indices of 10–15 mL/g.`;
+}
+},
+
+hemolytic:{
+name:"Hemolytic Index",
+inputs:[
+{id:"stock",label:"Volume of stock solution (mL)"},
+{id:"sample",label:"Volume of sample causing hemolysis (mL)"}
+],
+calc:(v)=>{
+let index=(v.stock/v.sample)*1000;
+return `Hemolytic Index: ${index.toFixed(2)}
+<br><br>This reflects saponin content in the sample.`;
+}
+},
+
+bitterness:{
+name:"Bitterness Value",
+inputs:[
+{id:"sampleDil",label:"Dilution factor of sample"},
+{id:"standardDil",label:"Dilution factor of quinine standard"}
+],
+calc:(v)=>{
+let value=(v.sampleDil/v.standardDil)*1000;
+return `Bitterness Value: ${value.toFixed(2)} units per gram
+<br><br>Values are expressed relative to quinine hydrochloride (standard bitterness = 1000).`;
+}
+}
+
+};
+
+const select=document.getElementById("calculatorSelect");
+
+Object.keys(calculators).forEach(key=>{
+let option=document.createElement("option");
+option.value=key;
+option.textContent=calculators[key].name;
+select.appendChild(option);
+});
+
+select.addEventListener("change",renderInputs);
+
+function renderInputs(){
+
+let calc=calculators[select.value];
+let area=document.getElementById("inputArea");
+area.innerHTML="";
+
+calc.inputs.forEach(inp=>{
+let label=document.createElement("label");
+label.textContent=inp.label;
+
+let input=document.createElement("input");
+input.id=inp.id;
+input.type=inp.type||"number";
+input.step="any";
+
+area.appendChild(label);
+area.appendChild(input);
+});
+
+}
+
+renderInputs();
+
+function calculate(){
+
+let calc=calculators[select.value];
+let values={};
+
+for(let inp of calc.inputs){
+
+let field=document.getElementById(inp.id);
+
+if(field.type==="number"){
+
+let val=parseFloat(field.value);
+
+if(isNaN(val)||val<=0){
+document.getElementById("result").innerHTML="<span class='error'>Please enter valid positive numbers.</span>";
+return;
+}
+
+values[inp.id]=val;
+
+}else{
+values[inp.id]=field.value;
+}
+
+}
+
+try{
+let result=calc.calc(values);
+document.getElementById("result").innerHTML=result;
+}catch(e){
+document.getElementById("result").innerHTML="<span class='error'>Calculation error. Check inputs.</span>";
+}
+
+}
+
+</script>
+
+</body>
+</html>
